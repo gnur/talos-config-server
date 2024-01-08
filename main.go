@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 
 	"github.com/pion/mdns"
 	"golang.org/x/net/ipv4"
@@ -13,6 +14,10 @@ func main() {
 	err := setupMDNS([]string{"talos-config.local"})
 	if err != nil {
 		slog.Error("Failed to initialize mdns", "error", err)
+	}
+	err = setupFileServer("./configs")
+	if err != nil {
+		slog.Error("Failed to start http server", "error", err)
 	}
 	select {}
 }
@@ -36,6 +41,17 @@ func setupMDNS(localnames []string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to start mdns listener: %w", err)
 
+	}
+	return nil
+}
+
+func setupFileServer(configdir string) error {
+	fs := http.FileServer(http.Dir(configdir))
+	http.Handle("/", fs)
+
+	err := http.ListenAndServe(":8423", nil)
+	if err != nil {
+		return fmt.Errorf("failed to start http listener: %w", err)
 	}
 	return nil
 }
